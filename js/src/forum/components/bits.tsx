@@ -14,7 +14,7 @@ export function Face({ attrs }: { attrs: { person: Person; size?: 'small' | 'lar
       const { person } = attrs;
       const className = 'Avatar SecretSanta-face' + (attrs.size ? ' SecretSanta-face--' + attrs.size : '');
       return person.avatar ? (
-        <img className={className} src={person.avatar} alt={person.name} title={person.name} loading="lazy" />
+        <img className={className} src={person.avatar} alt={person.name} title={person.name} loading={attrs.size === 'large' ? 'eager' : 'lazy'} />
       ) : (
         <span
           className={className}
