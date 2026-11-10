@@ -173,7 +173,9 @@ class HardeningTest extends SantaTestCase
 
         foreach ($names as $name) {
             // Prefixed like Laravel's own names, so two forums sharing one database never collide.
-            $this->assertStringStartsWith($prefix, $name, "$name has no table prefix");
+            if ($prefix !== '') {
+                $this->assertStringStartsWith($prefix, $name, "$name has no table prefix");
+            }
             $this->assertLessThanOrEqual(64, strlen(substr($name, strlen($prefix))) + 9, "$name is too long behind a 9-character prefix");
         }
         $this->assertNotContains('secret_santa_exclusions_pair_unique', $names);
