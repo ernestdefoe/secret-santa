@@ -148,23 +148,43 @@ class HardeningTest extends SantaTestCase
         $this->assertSame(422, $status);
     }
 
-    #[Test]
-    public function index_and_key_names_fit_mysql_behind_a_long_prefix()
+    /** @return list<string> every index and key name on our tables */
+    private function indexNames(): array
     {
         $db = $this->database();
-        $prefix = $db->getTablePrefix();
+        $like = $db->getTablePrefix().'secret_santa%';
+
         $names = match ($db->getDriverName()) {
-            'sqlite' => array_column($db->select("select name from sqlite_master where type = 'index' and tbl_name like ?", [$prefix.'secret_santa%']), 'name'),
-            'pgsql' => array_column($db->select('select indexname as name from pg_indexes where tablename like ? union select constraint_name from information_schema.table_constraints where table_name like ?', [$prefix.'secret_santa%', $prefix.'secret_santa%']), 'name'),
-            default => array_column($db->select('select constraint_name as name from information_schema.table_constraints where table_schema = database() and table_name like ? union select index_name from information_schema.statistics where table_schema = database() and table_name like ?', [$prefix.'secret_santa%', $prefix.'secret_santa%']), 'name'),
+            'sqlite' => array_column($db->select("select name from sqlite_master where type = 'index' and tbl_name like ?", [$like]), 'name'),
+            'pgsql' => array_column($db->select('select indexname as name from pg_indexes where tablename like ? union select constraint_name from information_schema.table_constraints where table_name like ?', [$like, $like]), 'name'),
+            default => array_column($db->select('select constraint_name as name from information_schema.table_constraints where table_schema = database() and table_name like ? union select index_name from information_schema.statistics where table_schema = database() and table_name like ?', [$like, $like]), 'name'),
         };
+
+        return array_values(array_filter($names, fn (string $n) => ! str_starts_with($n, 'sqlite_autoindex') && $n !== 'PRIMARY' && ! str_ends_with($n, '_pkey') && ! str_ends_with($n, '_not_null')));
+    }
+
+    #[Test]
+    public function index_and_key_names_carry_the_prefix_and_fit_mysql_behind_a_long_one()
+    {
+        $db = $this->database();
+        $prefix = $db->getConfig('prefix_indexes') ? $db->getTablePrefix() : '';
+        $names = $this->indexNames();
         $this->assertNotEmpty($names);
+
         foreach ($names as $name) {
-            if (str_starts_with($name, 'sqlite_autoindex') || $name === 'PRIMARY' || str_ends_with($name, '_pkey') || str_ends_with($name, '_not_null')) {
-                continue;
-            }
-            $bare = str_starts_with($name, $prefix) ? substr($name, strlen($prefix)) : $name;
-            $this->assertLessThanOrEqual(64, strlen($bare) + 9, "$bare is too long behind a 9-character prefix");
+            // Prefixed like Laravel's own names, so two forums sharing one database never collide.
+            $this->assertStringStartsWith($prefix, $name, "$name has no table prefix");
+            $this->assertLessThanOrEqual(64, strlen(substr($name, strlen($prefix))) + 9, "$name is too long behind a 9-character prefix");
         }
+        $this->assertNotContains('secret_santa_exclusions_pair_unique', $names);
+        $this->assertNotContains('secret_santa_assignments_receiver_unique', $names);
+
+        // Running the 1.0.1 migration again changes nothing.
+        $migration = require __DIR__.'/../../../migrations/2026_11_12_000000_prefix_secret_santa_unique_indexes.php';
+        $migration['up']($db->getSchemaBuilder());
+        $after = $this->indexNames();
+        sort($names);
+        sort($after);
+        $this->assertSame($names, $after);
     }
 }

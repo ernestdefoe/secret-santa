@@ -17,7 +17,7 @@
 - Dropouts after the reveal (`Dropouts`): the dropout's own Santa is LET OFF, never handed the dropout's giftee (they'd learn the dropout's pair); every gift the dropout still owed goes to a random rescue Santa (never the dropout's Santa, not excluded, least-loaded, not the giftee's own giftee if avoidable), so the organizer view shows nobody waiting. Only when nobody is eligible does a giftee wait for an organizer's rescue (that pair is known to them). Refused when it would leave under 4 members. A receiver has at most one Santa (unique index); a giver may have several (rescues).
 - The show-off discussion is started through Flarum's API as the organizer (`ShowOffThread`): process() skips `startDiscussion` and the tag check, so both are asked by hand.
 - Pages and modals are one lazy chunk (`forum/components/pages`); forum.js only registers routes, the nav link and notification components. Extend core's lazy components by module name.
-- Index names are kept under MySQL's 64 characters behind a 9-character prefix (`HardeningTest`); name any new long index explicitly.
+- 🚨 Never hand-name an index or key: Laravel does NOT prefix a name it is given, and on PostgreSQL/SQLite index names are shared by the whole database, so two forums in one database collide (1.0.0 did; fixed by the 2026_11_12 migration). Let Laravel generate names. Only when the generated name would pass MySQL's 64 characters behind a 9-character prefix, build it like Laravel does: the table prefix first (when `prefix_indexes` is on), then a short name. `HardeningTest` checks every name carries the prefix and fits.
 - All user text is rendered as plain text (white-space: pre-wrap), never HTML. Email bodies escape names with `e()` before the Markdown formatter.
 
 ## Testing
