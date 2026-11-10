@@ -646,6 +646,9 @@ export class ExchangePage extends Page {
     );
   }
 
+  // 🚨 No `bidi` on these selects: core's bidi walks a select's children as <option>s, and
+  // options from .map() are a fragment, so it throws on every redraw.
+
   /** Organizer tools. Counts and flags, never a pair: the only way to see one is the logged reveal. */
   organizer(e: Exchange) {
     const o = e.organizing!;
@@ -844,7 +847,12 @@ export class ExchangePage extends Page {
       const volunteers = e.participants.filter((p) => p.id !== row.user.id);
       items.push(
         <span className="SecretSanta-rescue">
-          <select className="FormControl" bidi={choice} aria-label={tx('organizer.rescue_pick')}>
+          <select
+            className="FormControl"
+            value={choice()}
+            onchange={(ev: Event) => choice((ev.target as HTMLSelectElement).value)}
+            aria-label={tx('organizer.rescue_pick')}
+          >
             <option value="">{tx('organizer.rescue_pick')}</option>
             {volunteers.map((p) => (
               <option value={String(p.id)}>{p.name}</option>
@@ -935,7 +943,12 @@ export class ExchangePage extends Page {
         {e.participants.length >= 2 && (
           <div className="SecretSanta-pairForm">
             {[this.pairA, this.pairB].map((pick) => (
-              <select className="FormControl" bidi={pick} aria-label={tx('organizer.pick_member')}>
+              <select
+                className="FormControl"
+                value={pick()}
+                onchange={(ev: Event) => pick((ev.target as HTMLSelectElement).value)}
+                aria-label={tx('organizer.pick_member')}
+              >
                 <option value="">{tx('organizer.pick_member')}</option>
                 {e.participants.map((p) => (
                   <option value={String(p.id)}>{p.name}</option>
