@@ -46,7 +46,9 @@ class SantaNotification extends Notification {
 
   content(): Mithril.Children {
     const data = this.data();
-    const username = (this.attrs.notification as any).fromUser()?.displayName();
+    // 🚨 A missing to-one relationship is `false`, not null: the alerts a giftee gets have no sender.
+    const from = (this.attrs.notification as any).fromUser();
+    const username = from ? from.displayName() : '';
     switch (this.type()) {
       case 'secretSantaMatched':
         return t(`notification.matched_${data.change || 'draw'}`, { username });
