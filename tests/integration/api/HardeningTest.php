@@ -178,8 +178,11 @@ class HardeningTest extends SantaTestCase
             }
             $this->assertLessThanOrEqual(64, strlen(substr($name, strlen($prefix))) + 9, "$name is too long behind a 9-character prefix");
         }
-        $this->assertNotContains('secret_santa_exclusions_pair_unique', $names);
         $this->assertNotContains('secret_santa_assignments_receiver_unique', $names);
+        if ($prefix !== '') {
+            // Without a prefix the pair index keeps its name: any other forum in the database has a prefix, so a different one.
+            $this->assertNotContains('secret_santa_exclusions_pair_unique', $names);
+        }
 
         // Running the 1.0.1 migration again changes nothing.
         $migration = require __DIR__.'/../../../migrations/2026_11_12_000000_prefix_secret_santa_unique_indexes.php';
