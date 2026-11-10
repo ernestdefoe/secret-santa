@@ -70,6 +70,7 @@ export interface Organizing {
   holdReveal: boolean;
   drawError: 'too_few' | 'exclusions' | null;
   matchCount: number;
+  sentHiddenUntil: string | null;
   members: MemberRow[];
   exclusions: [number, number][];
   reveals: { actor: Person | null; user: Person | null; reason: string | null; at: string }[];

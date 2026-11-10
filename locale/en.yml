@@ -199,6 +199,7 @@ ernestdefoe-secret-santa:
       note_digital: Delivery note
       missing: Missing
       sent: Sent theirs
+      sent_hidden: "Who has sent their gift shows from {date}. You're in this exchange too, and seeing it sooner could tell you who your Santa is."
       got: Got theirs
       yes: "Yes"
       not_yet: Not yet

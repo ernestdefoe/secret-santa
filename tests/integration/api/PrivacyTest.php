@@ -62,6 +62,32 @@ class PrivacyTest extends SantaTestCase
     }
 
     #[Test]
+    public function an_organizer_in_the_exchange_cannot_work_out_their_santa_from_who_has_sent()
+    {
+        $this->drawn();
+        $santa = $this->giverOf(2);
+        $this->call('POST', '/api/secret-santa/1/shipped', $santa, ['assignment' => $this->assignmentOf($santa)]);
+
+        // Member 2 organizes and takes part: no per-member sent flags before the send-by date.
+        [, $json] = $this->call('GET', '/api/secret-santa/1', 2);
+        $this->assertNotNull($json['data']['organizing']['sentHiddenUntil']);
+        foreach ($json['data']['organizing']['members'] as $row) {
+            $this->assertNull($row['shipped']);
+        }
+
+        // An admin who isn't in it sees them, to chase late Santas.
+        [, $admin] = $this->call('GET', '/api/secret-santa/1', 1);
+        $this->assertNull($admin['data']['organizing']['sentHiddenUntil']);
+        $sent = array_values(array_filter($admin['data']['organizing']['members'], fn ($row) => $row['shipped']));
+        $this->assertSame([$santa], array_map(fn ($row) => $row['user']['id'], $sent));
+
+        // After the send-by date, the organizer sees them too.
+        $this->database()->table('secret_santa_exchanges')->where('id', 1)->update(['ship_by' => \Carbon\Carbon::now()->subDay()->toDateString()]);
+        [, $json] = $this->call('GET', '/api/secret-santa/1', 2);
+        $this->assertNull($json['data']['organizing']['sentHiddenUntil']);
+    }
+
+    #[Test]
     public function the_organizer_sees_only_their_own_match()
     {
         $pairs = $this->drawn();

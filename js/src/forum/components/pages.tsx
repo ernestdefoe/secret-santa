@@ -782,6 +782,7 @@ export class ExchangePage extends Page {
 
   memberTable(e: Exchange, members: MemberRow[]) {
     const revealed = e.status === 'active' || e.status === 'complete';
+    const hidden = !!e.organizing!.sentHiddenUntil;
     const flag = (value: boolean | null, yes: string, no: string) =>
       value === null ? (
         <span className="SecretSanta-muted">—</span>
@@ -795,12 +796,13 @@ export class ExchangePage extends Page {
 
     return (
       <div className="SecretSanta-tableWrap">
+        {hidden && <p className="helpText">{t('organizer.sent_hidden', { date: day(e.organizing!.sentHiddenUntil!) })}</p>}
         <table className="SecretSanta-table">
           <thead>
             <tr>
               <th>{t('organizer.member')}</th>
               <th>{t(`organizer.note_${e.kind}`)}</th>
-              {revealed && <th>{t('organizer.sent')}</th>}
+              {revealed && !hidden && <th>{t('organizer.sent')}</th>}
               {revealed && <th>{t('organizer.got')}</th>}
               <th>
                 <span className="sr-only">{t('organizer.actions')}</span>
@@ -816,7 +818,7 @@ export class ExchangePage extends Page {
                 <td>
                   {row.hasShippingNote ? <Icon name="fas fa-check" /> : <span className="SecretSanta-flag is-no">{t('organizer.missing')}</span>}
                 </td>
-                {revealed && <td>{flag(row.shipped, 'organizer.yes', 'organizer.not_yet')}</td>}
+                {revealed && !hidden && <td>{flag(row.shipped, 'organizer.yes', 'organizer.not_yet')}</td>}
                 {revealed && (
                   <td>
                     {row.waiting ? (

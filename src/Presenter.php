@@ -124,7 +124,7 @@ class Presenter
         }
 
         if ($organizer) {
-            $data['organizing'] = $this->organizing($exchange, $participants);
+            $data['organizing'] = $this->organizing($exchange, $participants, (bool) $mine);
         }
 
         return $data;
@@ -203,13 +203,21 @@ class Presenter
      * received theirs (as separate flags, never as a pair), exclusions, giftees
      * waiting on a rescue Santa, and the reveal log.
      *
+     * 🚨 An organizer who is also in the exchange would see their own gift
+     * ship at the same moment one member's "sent" flips to yes: that names
+     * their Santa. So for them the per-member sent flags stay hidden until the
+     * send-by date (or three weeks after the reveal), when chasing late
+     * Santas is what they're for.
+     *
      * @param Collection<int, Participant> $participants
      * @return array<string, mixed>
      */
-    private function organizing(Exchange $exchange, Collection $participants): array
+    private function organizing(Exchange $exchange, Collection $participants, bool $inIt): array
     {
         $assignments = Assignment::query()->where('exchange_id', $exchange->id)->get(['giver_id', 'receiver_id', 'shipped_at', 'received_at']);
         $revealed = in_array($exchange->status, [Exchange::ACTIVE, Exchange::COMPLETE], true);
+        $sentFrom = $exchange->ship_by?->copy()->endOfDay() ?? $exchange->revealed_at?->copy()->addWeeks(3);
+        $sentHidden = $inIt && $exchange->status === Exchange::ACTIVE && $sentFrom && $sentFrom->isFuture();
 
         $owing = $assignments->groupBy('giver_id');
         $incoming = $assignments->keyBy('receiver_id');
@@ -220,11 +228,12 @@ class Presenter
             'holdReveal' => $exchange->hold_reveal,
             'drawError' => $exchange->draw_error,
             'matchCount' => $assignments->count(),
+            'sentHiddenUntil' => $sentHidden ? $sentFrom->toIso8601String() : null,
             'members' => $participants->map(fn (Participant $p) => [
                 'user' => $this->user($p->user),
                 'joinedAt' => $p->joined_at?->toIso8601String(),
                 'hasShippingNote' => (bool) trim((string) $p->shipping_note),
-                'shipped' => $revealed && $owing->has($p->user_id) ? $owing->get($p->user_id)->every(fn ($a) => $a->shipped_at !== null) : null,
+                'shipped' => $revealed && ! $sentHidden && $owing->has($p->user_id) ? $owing->get($p->user_id)->every(fn ($a) => $a->shipped_at !== null) : null,
                 'received' => $revealed && $incoming->has($p->user_id) ? $incoming->get($p->user_id)->received_at !== null : null,
                 'waiting' => $revealed && ! $incoming->has($p->user_id),
             ])->filter(fn (array $row) => $row['user'] !== null)->values()->all(),
