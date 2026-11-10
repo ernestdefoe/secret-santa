@@ -108,10 +108,12 @@ class Dropouts
             ->pluck('user_id')->map(fn ($id) => (int) $id)->all();
     }
 
-    /** A volunteer buys for a giftee whose Santa dropped out. */
+    /** A volunteer from the exchange buys for a giftee whose Santa dropped out. */
     public function rescue(Exchange $exchange, int $receiverId, User $volunteer): bool
     {
-        if ($exchange->status !== Exchange::ACTIVE || $receiverId === $volunteer->id || ! in_array($receiverId, $this->orphans($exchange), true)) {
+        // Only someone already in the exchange: the volunteer gets the giftee's address.
+        $inIt = Participant::query()->where('exchange_id', $exchange->id)->where('user_id', $volunteer->id)->exists();
+        if ($exchange->status !== Exchange::ACTIVE || ! $inIt || $receiverId === $volunteer->id || ! in_array($receiverId, $this->orphans($exchange), true)) {
             return false;
         }
         $receiver = User::query()->find($receiverId);

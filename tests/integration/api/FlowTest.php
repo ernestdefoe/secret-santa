@@ -263,6 +263,10 @@ class FlowTest extends SantaTestCase
         [, $orphanView] = $this->call('GET', '/api/secret-santa/1', $orphan);
         $this->assertTrue($orphanView['data']['receiving']['waiting']);
 
+        // Someone outside the exchange can't be handed the giftee's address.
+        [$status] = $this->call('POST', '/api/secret-santa/1/rescue', 2, ['user' => $orphan, 'volunteer' => 7]);
+        $this->assertSame(422, $status);
+
         $volunteer = $orphan === 6 ? 5 : 6;
         [$status] = $this->call('POST', '/api/secret-santa/1/rescue', 2, ['user' => $orphan, 'volunteer' => $volunteer]);
         $this->assertSame(200, $status);
