@@ -1,0 +1,1028 @@
+// Secret Santa — the list page, the exchange page and its forms.
+// Text colours come from Flarum's own custom properties (light, dark, every
+// theme that sets them), set explicitly so theme link and heading rules don't
+// win. The festive red and green are only ever backgrounds or icons with
+// white on them, which reads in light and dark alike.
+
+.SecretSantaPage {
+  --ss-red: #c62828;
+  --ss-green: #2e7d32;
+  --ss-gold: #b7791f;
+  --ss-soft: var(--control-bg);
+  --ss-line: var(--control-bg);
+  color: var(--text-color);
+
+  .Page-content {
+    min-width: 0;
+  }
+
+  h2,
+  h3,
+  h4 {
+    color: var(--heading-color, var(--text-color));
+  }
+
+  a:not(.Button) {
+    color: var(--link-color, var(--primary-color));
+  }
+}
+
+.SecretSanta-muted {
+  color: var(--muted-color);
+}
+
+.SecretSanta-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// The heading row of the list page.
+.SecretSanta-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 24px;
+  padding: 20px 22px;
+  border-radius: var(--border-radius);
+  background:
+    radial-gradient(circle at 92% 20%, rgba(255, 255, 255, 0.18) 0 2px, transparent 3px),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.14) 0 2px, transparent 3px),
+    radial-gradient(circle at 66% 30%, rgba(255, 255, 255, 0.12) 0 1.5px, transparent 2.5px),
+    linear-gradient(120deg, #9f1d1d, #c62828 55%, #2e7d32);
+  color: #fff;
+
+  .SecretSantaPage & h2.SecretSanta-title,
+  .SecretSantaPage & .SecretSanta-lead {
+    color: #fff;
+  }
+
+  .Button--primary {
+    background: #fff;
+    color: #9f1d1d;
+
+    &:hover,
+    &:focus-visible {
+      background: #fdecec;
+      color: #7f1717;
+    }
+  }
+}
+
+.SecretSanta-headText {
+  min-width: 0;
+}
+
+.SecretSanta-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.SecretSanta-lead {
+  margin: 0;
+  max-width: 560px;
+  opacity: 0.92;
+}
+
+.SecretSanta-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--muted-color);
+
+  > .icon {
+    font-size: 36px;
+    color: var(--ss-red);
+  }
+}
+
+.SecretSanta-section {
+  margin-bottom: 28px;
+}
+
+.SecretSanta-sectionTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  .SecretSantaPage & {
+    color: var(--muted-color);
+  }
+}
+
+.SecretSanta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(~"min(260px, 100%)", 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.SecretSanta-card {
+  min-width: 0;
+}
+
+.SecretSantaPage a.SecretSanta-cardLink {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  padding: 16px;
+  border: 1px solid var(--ss-line);
+  border-top: 4px solid var(--ss-red);
+  border-radius: var(--border-radius);
+  background: var(--body-bg);
+  color: var(--text-color);
+  text-decoration: none;
+  transition:
+    box-shadow 0.15s,
+    transform 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+
+  .SecretSanta-card--active & {
+    border-top-color: var(--ss-green);
+  }
+
+  .SecretSanta-card--complete & {
+    border-top-color: var(--muted-color);
+  }
+}
+
+.SecretSanta-cardTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.SecretSanta-cardTitle {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  color: var(--heading-color, var(--text-color));
+}
+
+.SecretSanta-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+  color: var(--muted-color);
+
+  > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.SecretSanta-when {
+  font-size: 13px;
+  color: var(--text-color);
+}
+
+.SecretSanta-cardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.SecretSanta-count {
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+.SecretSanta-youre-in {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ss-green);
+
+  [data-theme^="dark"] & {
+    color: #81c784;
+  }
+}
+
+// Status pills: white on a solid colour, the same in light and dark.
+.SecretSanta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff;
+  background: var(--ss-red, #c62828);
+  white-space: nowrap;
+
+  &--drawn {
+    background: var(--ss-gold, #b7791f);
+  }
+
+  &--active {
+    background: var(--ss-green, #2e7d32);
+  }
+
+  &--complete {
+    background: #5f6b7a;
+  }
+}
+
+// Progress: shipped behind, received in front.
+.SecretSanta-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.SecretSanta-bar {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ss-soft);
+  overflow: hidden;
+
+  > span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 999px;
+  }
+}
+
+.SecretSanta-barShipped {
+  background: var(--ss-gold);
+  opacity: 0.55;
+}
+
+.SecretSanta-barReceived {
+  background: var(--ss-green);
+}
+
+.SecretSanta-progressText {
+  font-size: 12px;
+  color: var(--muted-color);
+}
+
+// Faces.
+.SecretSanta-face {
+  --size: 32px;
+  width: var(--size);
+  height: var(--size);
+  font-size: calc(var(--size) * 0.45);
+  line-height: var(--size);
+  flex-shrink: 0;
+
+  &--small {
+    --size: 26px;
+  }
+
+  &--large {
+    --size: 56px;
+  }
+}
+
+.SecretSanta-faces {
+  display: inline-flex;
+  align-items: center;
+
+  .SecretSanta-face + .SecretSanta-face {
+    margin-left: -8px;
+  }
+
+  .SecretSanta-face {
+    box-shadow: 0 0 0 2px var(--body-bg);
+  }
+}
+
+.SecretSanta-facesMore {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--muted-color);
+}
+
+.SecretSantaPage a.SecretSanta-person,
+.SecretSanta-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-color);
+  font-weight: 600;
+  vertical-align: middle;
+
+  .SecretSanta-face {
+    --size: 24px;
+  }
+}
+
+.SecretSanta-personName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.SecretSanta-more {
+  text-align: center;
+}
+
+// The exchange page.
+.SecretSantaPage a.SecretSanta-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+.SecretSanta-exchangeHead {
+  margin-bottom: 18px;
+}
+
+.SecretSanta-exchangeHeadTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+.SecretSanta-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.SecretSanta-exchangeTitle {
+  margin: 10px 0 18px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+// The four steps: sign-ups, draw, gifts on the way, done.
+.SecretSanta-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.SecretSanta-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  text-align: center;
+  min-width: 0;
+
+  // The line to the previous step.
+  &:not(:first-child)::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    right: 50%;
+    width: 100%;
+    height: 3px;
+    background: var(--ss-soft);
+    z-index: 0;
+  }
+
+  &.is-done:not(:first-child)::before,
+  &.is-current:not(:first-child)::before {
+    background: var(--ss-green);
+  }
+}
+
+.SecretSanta-stepDot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--ss-soft);
+  color: var(--muted-color);
+
+  .is-done & {
+    background: var(--ss-green);
+    color: #fff;
+  }
+
+  .is-current & {
+    background: var(--ss-red);
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.22);
+  }
+}
+
+.SecretSanta-stepLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+
+.SecretSanta-stepDate {
+  font-size: 12px;
+  color: var(--muted-color);
+}
+
+.SecretSanta-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(~"min(150px, 100%)", 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+
+  dt {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-color);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-weight: 600;
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+  }
+}
+
+.SecretSanta-fact {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
+  background: var(--ss-soft);
+}
+
+.SecretSanta-panel {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--ss-line);
+  border-radius: var(--border-radius);
+  background: var(--body-bg);
+  color: var(--text-color);
+  min-width: 0;
+}
+
+.SecretSanta-panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.SecretSanta-panelTitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+
+  .SecretSanta-panelHead & {
+    margin: 0;
+  }
+
+  .icon {
+    color: var(--ss-red);
+  }
+}
+
+.SecretSanta-panelActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.SecretSanta-join {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-color: var(--ss-red);
+  border-width: 2px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.SecretSanta-joinText {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.SecretSanta-mine .SecretSanta-panelTitle .icon {
+  color: var(--ss-green);
+}
+
+.SecretSanta-callout {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--ss-gold);
+  border-radius: var(--border-radius);
+  background: var(--ss-soft);
+  color: var(--text-color);
+}
+
+.SecretSanta-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(~"min(240px, 100%)", 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+
+  > div {
+    min-width: 0;
+  }
+}
+
+.SecretSanta-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  .SecretSantaPage & {
+    color: var(--muted-color);
+  }
+}
+
+.SecretSanta-box {
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
+  background: var(--ss-soft);
+  color: var(--text-color);
+}
+
+// "You're buying for ..." — the moment the extension is about.
+.SecretSanta-giving {
+  border: 2px solid var(--ss-green);
+  background:
+    linear-gradient(var(--body-bg), var(--body-bg)) padding-box,
+    linear-gradient(120deg, var(--ss-red), var(--ss-green)) border-box;
+  border-color: transparent;
+}
+
+.SecretSanta-match {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  min-width: 0;
+
+  > div {
+    min-width: 0;
+  }
+}
+
+.SecretSanta-matchLabel {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-color);
+}
+
+.SecretSanta-matchName {
+  margin: 2px 0 0;
+  font-size: 20px;
+
+  .SecretSanta-person {
+    font-size: 20px;
+  }
+
+  .SecretSanta-person .SecretSanta-face {
+    display: none;
+  }
+}
+
+.SecretSanta-unmasked {
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
+  background: var(--ss-soft);
+}
+
+.SecretSanta-delivery {
+  margin: 12px 0;
+
+  p {
+    margin: 0 0 8px;
+  }
+}
+
+.SecretSanta-done {
+  font-weight: 600;
+  color: var(--text-color);
+
+  .icon {
+    color: var(--ss-green);
+  }
+}
+
+.SecretSanta-thanks {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--ss-red);
+  border-radius: var(--border-radius);
+  background: var(--ss-soft);
+  color: var(--text-color);
+
+  .icon {
+    color: var(--ss-red);
+    margin-top: 3px;
+  }
+}
+
+// Waiting → on the way → arrived.
+.SecretSanta-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--ss-soft);
+    color: var(--muted-color);
+
+    &.is-done {
+      background: var(--ss-green);
+      color: #fff;
+    }
+
+    &.is-current {
+      background: var(--ss-red);
+      color: #fff;
+    }
+  }
+}
+
+// Anonymous notes.
+.SecretSanta-notes {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ss-line);
+}
+
+.SecretSanta-noteList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.SecretSanta-note {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--ss-soft);
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+
+  &.is-mine {
+    align-self: flex-end;
+    border-radius: 14px 14px 4px 14px;
+    background: var(--primary-color);
+    color: var(--button-primary-color, #fff);
+
+    .SecretSanta-noteWho {
+      color: inherit;
+      opacity: 0.8;
+    }
+  }
+}
+
+.SecretSanta-noteWho {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-color);
+}
+
+.SecretSanta-noteForm {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+
+  textarea {
+    flex: 1;
+    min-width: 0;
+    resize: vertical;
+  }
+}
+
+.SecretSanta-threadPanel {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+
+  > .icon {
+    font-size: 24px;
+    color: var(--ss-red);
+  }
+
+  > div {
+    min-width: 0;
+  }
+
+  .SecretSanta-panelTitle {
+    margin-bottom: 2px;
+  }
+}
+
+.SecretSanta-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(~"min(170px, 100%)", 1fr));
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    min-width: 0;
+  }
+
+  .SecretSanta-person {
+    max-width: 100%;
+  }
+}
+
+// Organizer tools.
+.SecretSanta-organizer {
+  border-style: dashed;
+  border-color: var(--muted-color);
+}
+
+.SecretSanta-organizerMain {
+  margin-bottom: 14px;
+}
+
+.SecretSanta-peeked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--ss-gold);
+  background: var(--ss-soft);
+  color: var(--text-color);
+
+  > span {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+// The member table scrolls sideways on a phone instead of squeezing.
+.SecretSanta-tableWrap {
+  margin-bottom: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.SecretSanta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--text-color);
+
+  th {
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-color);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--ss-line);
+  }
+
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--ss-line);
+    vertical-align: middle;
+  }
+
+  td:first-child {
+    max-width: 200px;
+  }
+}
+
+.SecretSanta-rowActions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.SecretSanta-flag {
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.is-yes {
+    color: var(--ss-green);
+
+    [data-theme^="dark"] & {
+      color: #81c784;
+    }
+  }
+
+  &.is-no {
+    color: var(--muted-color);
+  }
+}
+
+.SecretSanta-rescue {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: 6px;
+
+  select {
+    width: auto;
+    max-width: 160px;
+  }
+}
+
+.SecretSanta-exclusions {
+  margin-bottom: 14px;
+}
+
+.SecretSanta-pairs {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.SecretSanta-pairForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  select {
+    flex: 1 1 140px;
+    min-width: 0;
+    width: auto;
+  }
+}
+
+.SecretSanta-log ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+// Forms.
+.SecretSantaModal {
+  .Form-group > label:not(.checkbox) .icon {
+    color: var(--muted-color);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+.SecretSantaModal-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(~"min(200px, 100%)", 1fr));
+  gap: 0 14px;
+}
+
+.SecretSantaModal-kinds {
+  display: flex;
+  gap: 8px;
+}
+
+.SecretSantaModal-kind {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 2px solid var(--control-bg);
+  border-radius: var(--border-radius);
+  color: var(--control-color);
+  font-weight: 600;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &.is-on {
+    border-color: var(--primary-color);
+    color: var(--text-color);
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.SecretSantaModal-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(~"min(180px, 100%)", 1fr));
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.SecretSantaModal-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+  cursor: pointer;
+  min-width: 0;
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &.is-on {
+    background: var(--control-bg);
+  }
+}
+
+@media (max-width: 767px) {
+  .SecretSanta-head {
+    padding: 16px;
+
+    .Button {
+      width: 100%;
+    }
+  }
+
+  .SecretSanta-exchangeTitle {
+    font-size: 22px;
+  }
+
+  .SecretSanta-stepLabel {
+    font-size: 12px;
+  }
+
+  .SecretSanta-join .Button {
+    width: 100%;
+  }
+
+  .SecretSanta-note {
+    max-width: 95%;
+  }
+
+  .SecretSanta-noteForm {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
