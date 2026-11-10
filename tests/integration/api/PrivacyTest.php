@@ -132,8 +132,8 @@ class PrivacyTest extends SantaTestCase
             $this->assertNull($row->from_user_id);
             $this->assertSame($giftee, (int) $row->subject_id);
             $data = json_decode($row->data, true);
-            $this->assertSame(['exchange', 'title'], array_slice(array_keys($data), 0, 2));
-            $this->assertSame([], array_diff(array_keys($data), ['exchange', 'title', 'fromSanta', 'message']));
+            // MySQL's JSON column reorders keys: compare the set.
+            $this->assertEqualsCanonicalizing($row->type === 'secretSantaShipped' ? ['exchange', 'title'] : ['exchange', 'title', 'fromSanta', 'message'], array_keys($data));
         }
 
         [, $json] = $this->call('GET', '/api/notifications?include=fromUser,subject', $giftee);
