@@ -36,7 +36,7 @@ class PrivacyTest extends SantaTestCase
             $this->assertSame($giftee, $json['data']['giving'][0]['user']['id']);
             $this->assertSame("NOTE-$giftee", $json['data']['giving'][0]['shippingNote']);
             $this->assertNull($json['data']['receiving']['santa'], 'the Santa stays secret');
-            $this->assertSame(['id', 'shippedAt', 'giftNote', 'receivedAt', 'thanks', 'messages', 'santa'], array_keys($json['data']['receiving']));
+            $this->assertSame(['shippedAt', 'giftNote', 'receivedAt', 'thanks', 'messages', 'santa'], array_keys($json['data']['receiving']));
             $this->assertOnlyMarkers($body, ["WISH-$me", "NOTE-$me", "WISH-$giftee", "NOTE-$giftee"], "member $me");
         }
     }
@@ -66,7 +66,7 @@ class PrivacyTest extends SantaTestCase
     {
         $this->drawn();
         $santa = $this->giverOf(2);
-        $this->call('POST', '/api/secret-santa/1/shipped', $santa, ['assignment' => $this->assignmentOf($santa)]);
+        $this->call('POST', '/api/secret-santa/1/shipped', $santa, ['giftee' => $this->gifteeOf($santa)]);
 
         // Member 2 organizes and takes part: no per-member sent flags before the send-by date.
         [, $json] = $this->call('GET', '/api/secret-santa/1', 2);
@@ -75,14 +75,8 @@ class PrivacyTest extends SantaTestCase
             $this->assertNull($row['shipped']);
         }
 
-        // An admin who isn't in it sees them, to chase late Santas.
-        [, $admin] = $this->call('GET', '/api/secret-santa/1', 1);
-        $this->assertNull($admin['data']['organizing']['sentHiddenUntil']);
-        $sent = array_values(array_filter($admin['data']['organizing']['members'], fn ($row) => $row['shipped']));
-        $this->assertSame([$santa], array_map(fn ($row) => $row['user']['id'], $sent));
-
-        // After the send-by date, the organizer sees them too.
-        $this->database()->table('secret_santa_exchanges')->where('id', 1)->update(['ship_by' => \Carbon\Carbon::now()->subDay()->toDateString()]);
+        // Once the moment fixed at the reveal has passed, they show.
+        $this->database()->table('secret_santa_exchanges')->where('id', 1)->update(['sent_visible_at' => \Carbon\Carbon::now()->subMinute()]);
         [, $json] = $this->call('GET', '/api/secret-santa/1', 2);
         $this->assertNull($json['data']['organizing']['sentHiddenUntil']);
     }
@@ -119,8 +113,8 @@ class PrivacyTest extends SantaTestCase
     {
         $pairs = $this->drawn();
         $giver = 3;
-        $this->call('POST', '/api/secret-santa/1/shipped', $giver, ['assignment' => $this->assignmentOf($giver), 'note' => 'GIFTNOTE']);
-        $this->call('POST', '/api/secret-santa/1/message', $giver, ['assignment' => $this->assignmentOf($giver), 'body' => 'SANTAMSG']);
+        $this->call('POST', '/api/secret-santa/1/shipped', $giver, ['giftee' => $this->gifteeOf($giver), 'note' => 'GIFTNOTE']);
+        $this->call('POST', '/api/secret-santa/1/message', $giver, ['giftee' => $this->gifteeOf($giver), 'body' => 'SANTAMSG']);
 
         $paths = [
             '/api',
@@ -148,9 +142,8 @@ class PrivacyTest extends SantaTestCase
         $pairs = $this->drawn();
         $giver = 3;
         $giftee = $pairs[$giver];
-        $assignment = $this->assignmentOf($giver);
-        $this->call('POST', '/api/secret-santa/1/shipped', $giver, ['assignment' => $assignment]);
-        $this->call('POST', '/api/secret-santa/1/message', $giver, ['assignment' => $assignment, 'body' => 'hello']);
+        $this->call('POST', '/api/secret-santa/1/shipped', $giver, ['giftee' => $giftee]);
+        $this->call('POST', '/api/secret-santa/1/message', $giver, ['giftee' => $giftee, 'body' => 'hello']);
 
         $rows = $this->database()->table('notifications')->where('user_id', $giftee)->whereIn('type', ['secretSantaShipped', 'secretSantaMessage'])->get();
         $this->assertCount(2, $rows);
@@ -241,16 +234,16 @@ class PrivacyTest extends SantaTestCase
     public function members_cannot_act_on_someone_elses_assignment()
     {
         $pairs = $this->drawn();
-        $theirs = $this->assignmentOf(4);
 
-        // 3 is neither the giver nor the receiver of 4's assignment (unless they happen to be its receiver).
-        $stranger = $pairs[4] === 3 ? 5 : 3;
+        // 3 names 4's giftee, who isn't theirs (each giftee has one Santa): nothing happens.
         foreach (['shipped', 'message'] as $action) {
-            [$status] = $this->call('POST', "/api/secret-santa/1/$action", $stranger, ['assignment' => $theirs, 'body' => 'x']);
+            [$status] = $this->call('POST', "/api/secret-santa/1/$action", 3, ['giftee' => $pairs[4], 'body' => 'x']);
             $this->assertSame(404, $status, $action);
         }
-        // A giver cannot mark their own giftee's gift as received.
-        [$status] = $this->call('POST', '/api/secret-santa/1/received', 4, ['assignment' => $theirs]);
+        // Someone outside the exchange has no gift to receive and no Santa to write to.
+        [$status] = $this->call('POST', '/api/secret-santa/1/received', 7);
+        $this->assertSame(404, $status);
+        [$status] = $this->call('POST', '/api/secret-santa/1/message', 7, ['to' => 'santa', 'body' => 'hi']);
         $this->assertSame(404, $status);
     }
 }

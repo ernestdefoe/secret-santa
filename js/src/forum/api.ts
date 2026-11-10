@@ -28,14 +28,12 @@ export interface Card {
 }
 
 export interface Note {
-  id: number;
   mine: boolean;
   body: string;
   at: string;
 }
 
 export interface Giving {
-  id: number;
   user: Person | null;
   wishlist: string | null;
   shippingNote: string | null;
@@ -47,7 +45,6 @@ export interface Giving {
 }
 
 export interface Receiving {
-  id?: number;
   waiting?: boolean;
   shippedAt?: string | null;
   giftNote?: string | null;
@@ -68,7 +65,7 @@ export interface MemberRow {
 
 export interface Organizing {
   holdReveal: boolean;
-  drawError: 'too_few' | 'exclusions' | null;
+  drawError: 'too_few' | 'exclusions' | 'busy' | null;
   matchCount: number;
   sentHiddenUntil: string | null;
   members: MemberRow[];

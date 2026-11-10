@@ -87,7 +87,14 @@ export class ExchangeModal extends FormModal<ExchangeAttrs> {
             </div>
             <div className="Form-group">
               <label for="ss-ship">{t('form.ship_by')}</label>
-              <input id="ss-ship" className="FormControl" type="date" bidi={this.shipBy} min={this.ends().slice(0, 10)} />
+              <input
+                id="ss-ship"
+                className="FormControl"
+                type="date"
+                bidi={this.shipBy}
+                // Once sign-ups close it may only move later.
+                min={(locked && this.attrs.exchange?.shipBy) || this.ends().slice(0, 10)}
+              />
             </div>
           </div>
           <div className="Form-group">
@@ -113,7 +120,12 @@ export class ExchangeModal extends FormModal<ExchangeAttrs> {
             </label>
             <p className="helpText">{t('form.hold_reveal_help')}</p>
             <label className="checkbox">
-              <input type="checkbox" checked={this.unmask()} onchange={(e: Event) => this.unmask((e.target as HTMLInputElement).checked)} />
+              <input
+                type="checkbox"
+                checked={this.unmask()}
+                disabled={locked}
+                onchange={(e: Event) => this.unmask((e.target as HTMLInputElement).checked)}
+              />
               {t('form.unmask')}
             </label>
             <p className="helpText">{t('form.unmask_help')}</p>

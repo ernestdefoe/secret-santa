@@ -14,7 +14,8 @@ return Migration::createTable('secret_santa_exclusions', function (Blueprint $ta
     $table->unsignedInteger('other_id');
     $table->unsignedInteger('created_by')->nullable();
 
-    $table->unique(['exchange_id', 'user_id', 'other_id']);
+    // Named: the generated name passes MySQL's 64 characters behind a prefix like "flarum_".
+    $table->unique(['exchange_id', 'user_id', 'other_id'], 'secret_santa_exclusions_pair_unique');
     $table->foreign('exchange_id')->references('id')->on('secret_santa_exchanges')->cascadeOnDelete();
     $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
     $table->foreign('other_id')->references('id')->on('users')->cascadeOnDelete();

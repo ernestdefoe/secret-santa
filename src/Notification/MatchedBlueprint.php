@@ -10,7 +10,7 @@ use Flarum\User\User;
 /** To a Santa: "you're buying for Alice". Subject and from-user are the giftee, whom the Santa may know. */
 class MatchedBlueprint extends SantaBlueprint implements MailableInterface
 {
-    /** @param string $change draw, swap (a dropout moved them on) or rescue */
+    /** @param string $change draw, or rescue (buying for a giftee whose Santa dropped out) */
     public function __construct(Exchange $exchange, User $receiver, string $change = 'draw')
     {
         parent::__construct($exchange, $receiver, $receiver, ['change' => $change]);

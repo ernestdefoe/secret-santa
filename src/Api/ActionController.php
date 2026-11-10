@@ -10,7 +10,6 @@ use ErnestDefoe\SecretSanta\Exchange;
 use ErnestDefoe\SecretSanta\Exclusion;
 use ErnestDefoe\SecretSanta\Message;
 use ErnestDefoe\SecretSanta\Notification\MessageBlueprint;
-use ErnestDefoe\SecretSanta\Notification\NewsBlueprint;
 use ErnestDefoe\SecretSanta\Notification\ReceivedBlueprint;
 use ErnestDefoe\SecretSanta\Notification\ShippedBlueprint;
 use ErnestDefoe\SecretSanta\Participant;
@@ -18,10 +17,14 @@ use ErnestDefoe\SecretSanta\Presenter;
 use ErnestDefoe\SecretSanta\Reveal;
 use ErnestDefoe\SecretSanta\Settings;
 use ErnestDefoe\SecretSanta\ShowOffThread;
+use ErnestDefoe\SecretSanta\Exclusions;
+use ErnestDefoe\SecretSanta\Job\SendNews;
+use ErnestDefoe\SecretSanta\Matcher;
 use Flarum\Http\RequestUtil;
 use Flarum\Notification\NotificationSyncer;
 use Flarum\User\Exception\PermissionDeniedException;
 use Flarum\User\User;
+use Illuminate\Contracts\Queue\Queue;
 use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -35,8 +38,11 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Organizers:  draw (now, or again before the reveal), reveal, exclude {a, b, remove?},
  *              dropout {user}, rescue {user, volunteer}, finish, thread,
  *              peek {user, reason}: the one logged way to see a match.
- * Santas:      shipped {assignment, note, undo?}, message {assignment, body}
- * Giftees:     received {assignment, thanks, undo?}, message {assignment, body}
+ * Santas:      shipped {giftee, note, undo?}, message {giftee, body}
+ * Giftees:     received {thanks, undo?}, message {to: "santa", body}
+ *
+ * 🚨 Assignment row ids never cross the wire, in or out: a Santa names their
+ * giftee by user id (whom they know), a giftee just says "my Santa".
  */
 class ActionController implements RequestHandlerInterface
 {
@@ -49,6 +55,7 @@ class ActionController implements RequestHandlerInterface
         private readonly NotificationSyncer $notifications,
         private readonly RateLimit $limit,
         private readonly ShowOffThread $thread,
+        private readonly Queue $queue,
     ) {
     }
 
@@ -72,7 +79,7 @@ class ActionController implements RequestHandlerInterface
             'draw' => $this->drawNow($exchange),
             'reveal' => $this->draw->reveal($exchange) ? null : 'secret_santa_wrong_state',
             'exclude' => $this->exclude($exchange, $actor, $body),
-            'dropout' => $this->dropout($exchange, $body),
+            'dropout' => $this->dropouts->remove($exchange, (int) ($body['user'] ?? 0)),
             'rescue' => $this->rescue($exchange, $body),
             'finish' => $this->finish($exchange),
             'thread' => $this->thread->start($exchange, $actor, $request),
@@ -105,42 +112,46 @@ class ActionController implements RequestHandlerInterface
     /** @param array<string, mixed> $body */
     private function exclude(Exchange $exchange, User $actor, array $body): ?string
     {
-        if (! in_array($exchange->status, [Exchange::OPEN, Exchange::DRAWN], true)) {
-            return 'secret_santa_wrong_state';
-        }
         $a = (int) ($body['a'] ?? 0);
         $b = (int) ($body['b'] ?? 0);
-        $members = Participant::query()->where('exchange_id', $exchange->id)->whereIn('user_id', [$a, $b])->count();
-        if ($a === $b || $members !== 2) {
-            return 'secret_santa_bad_pair';
-        }
+        $remove = ! empty($body['remove']);
 
-        if (! empty($body['remove'])) {
-            Exclusion::query()->where('exchange_id', $exchange->id)->where('user_id', min($a, $b))->where('other_id', max($a, $b))->delete();
-        } else {
-            Exclusion::pair($exchange->id, $a, $b, $actor->id);
-        }
+        $result = Exchange::locked($exchange->id, function (Exchange $fresh) use ($a, $b, $remove, $actor) {
+            if (! in_array($fresh->status, [Exchange::OPEN, Exchange::DRAWN], true)) {
+                return 'secret_santa_wrong_state';
+            }
+            $members = Participant::query()->where('exchange_id', $fresh->id)->pluck('user_id')->map(fn ($id) => (int) $id)->all();
+            if ($a === $b || ! in_array($a, $members, true) || ! in_array($b, $members, true)) {
+                return 'secret_santa_bad_pair';
+            }
 
-        $exchange->draw_error = null;
-        $exchange->save();
+            if ($remove) {
+                Exclusion::query()->where('exchange_id', $fresh->id)->where('user_id', min($a, $b))->where('other_id', max($a, $b))->delete();
+            } else {
+                // Organizers are held to the same rule as members: nobody may be left
+                // with under 3 people they could be matched with.
+                $pairs = Exclusions::pairs($fresh->id);
+                $pairs[] = [$a, $b];
+                if (Matcher::cornered($members, $pairs)) {
+                    return 'secret_santa_exclusions_tight';
+                }
+                Exclusion::pair($fresh->id, $a, $b, $actor->id);
+            }
+            $fresh->draw_error = null;
+            $fresh->save();
+
+            return $fresh->status;
+        });
+
+        if ($result !== Exchange::OPEN && $result !== Exchange::DRAWN) {
+            return $result ?? 'not_found';
+        }
         // A drawn exchange follows the new pairs at once (nobody has been told yet).
-        if ($exchange->status === Exchange::DRAWN) {
-            $error = $this->draw->run($exchange);
+        if ($result === Exchange::DRAWN) {
+            $error = $this->draw->run($exchange->refresh());
 
             return $error ? 'secret_santa_draw_'.$error : null;
         }
-
-        return null;
-    }
-
-    /** @param array<string, mixed> $body */
-    private function dropout(Exchange $exchange, array $body): ?string
-    {
-        $user = (int) ($body['user'] ?? 0);
-        if ($exchange->status === Exchange::COMPLETE || ! Participant::query()->where('exchange_id', $exchange->id)->where('user_id', $user)->exists()) {
-            return 'secret_santa_bad_member';
-        }
-        $this->dropouts->remove($exchange, $user);
 
         return null;
     }
@@ -165,9 +176,7 @@ class ActionController implements RequestHandlerInterface
         $exchange->completed_at = Carbon::now();
         $exchange->save();
 
-        foreach (User::query()->whereIn('id', Participant::query()->where('exchange_id', $exchange->id)->select('user_id'))->get() as $member) {
-            $this->notifications->sync(new NewsBlueprint($exchange, $member, 'ended'), [$member]);
-        }
+        $this->queue->push(new SendNews($exchange->id, 'ended'));
 
         return null;
     }
@@ -182,9 +191,10 @@ class ActionController implements RequestHandlerInterface
         if (! in_array($exchange->status, [Exchange::ACTIVE, Exchange::COMPLETE], true)) {
             return 'secret_santa_wrong_state';
         }
-        $column = $what === 'shipped' ? 'giver_id' : 'receiver_id';
         /** @var Assignment|null $row */
-        $row = Assignment::query()->where('exchange_id', $exchange->id)->where($column, $actor->id)->find((int) ($body['assignment'] ?? 0));
+        $row = $what === 'shipped'
+            ? Assignment::query()->where('exchange_id', $exchange->id)->where('giver_id', $actor->id)->where('receiver_id', (int) ($body['giftee'] ?? 0))->first()
+            : Assignment::query()->where('exchange_id', $exchange->id)->where('receiver_id', $actor->id)->first();
         if (! $row) {
             return 'not_found';
         }
@@ -227,9 +237,9 @@ class ActionController implements RequestHandlerInterface
             return 'secret_santa_wrong_state';
         }
         /** @var Assignment|null $row */
-        $row = Assignment::query()->where('exchange_id', $exchange->id)
-            ->where(fn ($q) => $q->where('giver_id', $actor->id)->orWhere('receiver_id', $actor->id))
-            ->find((int) ($body['assignment'] ?? 0));
+        $row = ($body['to'] ?? null) === 'santa'
+            ? Assignment::query()->where('exchange_id', $exchange->id)->where('receiver_id', $actor->id)->first()
+            : Assignment::query()->where('exchange_id', $exchange->id)->where('giver_id', $actor->id)->where('receiver_id', (int) ($body['giftee'] ?? 0))->first();
         if (! $row) {
             return 'not_found';
         }

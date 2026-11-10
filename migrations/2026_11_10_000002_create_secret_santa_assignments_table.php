@@ -21,7 +21,8 @@ return Migration::createTable('secret_santa_assignments', function (Blueprint $t
     $table->text('thanks')->nullable();
     $table->dateTime('created_at')->nullable();
 
-    $table->unique(['exchange_id', 'receiver_id']);
+    // Named: the generated name is 64 characters behind a 9-character prefix.
+    $table->unique(['exchange_id', 'receiver_id'], 'secret_santa_assignments_receiver_unique');
     $table->index('giver_id');
     $table->index('receiver_id');
     $table->foreign('exchange_id')->references('id')->on('secret_santa_exchanges')->cascadeOnDelete();

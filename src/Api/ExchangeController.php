@@ -159,8 +159,22 @@ class ExchangeController implements RequestHandlerInterface
         $exchange->title = $title;
         $exchange->description = $description ?: null;
         $exchange->budget = $budget ?: null;
-        $exchange->ship_by = $shipBy;
-        $exchange->unmask = (bool) ($body['unmask'] ?? $exchange->unmask ?? true);
+
+        if (! $open) {
+            // Once sign-ups close the send-by date may only move later, and whether
+            // Santas are unmasked is settled: members joined on those terms.
+            $current = $exchange->ship_by;
+            if (! $current && $shipBy && $shipBy->lt($exchange->signup_ends_at->copy()->startOfDay())) {
+                return Errors::make(422, 'secret_santa_bad_dates');
+            }
+            if ($current && (! $shipBy || $shipBy->lt($current))) {
+                return Errors::make(422, 'secret_santa_ship_by_later');
+            }
+            $exchange->ship_by = $shipBy;
+        } else {
+            $exchange->ship_by = $shipBy;
+            $exchange->unmask = (bool) ($body['unmask'] ?? $exchange->unmask ?? true);
+        }
 
         // What the draw depends on is settled once sign-ups close.
         if ($open) {

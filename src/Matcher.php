@@ -10,29 +10,61 @@ use Random\Randomizer;
  * that must not meet (a couple) may sit next to each other in neither
  * direction.
  *
+ * 🚨 Fewer than 4 members, or a member with fewer than 3 allowed neighbours,
+ * and a member can work their Santa out (with 3, A buys for B so C is A's
+ * Santa). Those draws are refused: see MIN_MEMBERS / MIN_NEIGHBOURS.
+ *
  * Random orders almost always work; when exclusions are dense, a randomized
  * backtracking search finds a cycle if one exists (within a step budget).
  * The randomness is the CSPRNG: the draw must not be guessable.
  */
 final class Matcher
 {
-    private const SHUFFLES = 300;
-    private const STEPS = 200000;
+    public const MIN_MEMBERS = 4;
+    public const MIN_NEIGHBOURS = 3;
 
-    public function __construct(private readonly Randomizer $random = new Randomizer())
+    private const SHUFFLES = 300;
+
+    /** True when the last cycle() gave up on its step budget rather than proving there is no way round. */
+    public bool $exhausted = false;
+
+    public function __construct(private readonly Randomizer $random = new Randomizer(), private readonly int $steps = 1000000)
     {
+    }
+
+    /**
+     * Members left with fewer than MIN_NEIGHBOURS people they may sit beside.
+     *
+     * @param list<int> $members
+     * @param list<array{int, int}> $exclusions
+     * @return list<int>
+     */
+    public static function cornered(array $members, array $exclusions): array
+    {
+        $members = array_values(array_unique($members));
+        $in = array_flip($members);
+        $excluded = [];
+        foreach ($exclusions as [$a, $b]) {
+            if (isset($in[$a], $in[$b]) && $a !== $b) {
+                $excluded[$a][$b] = $excluded[$b][$a] = true;
+            }
+        }
+
+        return array_values(array_filter($members, fn (int $m) => count($members) - 1 - count($excluded[$m] ?? []) < self::MIN_NEIGHBOURS));
     }
 
     /**
      * @param list<int> $members
      * @param list<array{int, int}> $exclusions
-     * @return array<int, int>|null giver => receiver, or null if no cycle exists (or fewer than 3 members)
+     * @return array<int, int>|null giver => receiver, or null: fewer than MIN_MEMBERS, a member
+     *                              cornered by exclusions, no cycle, or the step budget ran out ($exhausted)
      */
     public function cycle(array $members, array $exclusions = []): ?array
     {
+        $this->exhausted = false;
         $members = array_values(array_unique($members));
         $n = count($members);
-        if ($n < 3) {
+        if ($n < self::MIN_MEMBERS || self::cornered($members, $exclusions)) {
             return null;
         }
 
@@ -57,7 +89,12 @@ final class Matcher
         $path = [$start];
         $used = [$start => true];
 
-        return $this->extend($path, $used, $members, $blocked, $steps, $start) ? self::pairs($path) : null;
+        if ($this->extend($path, $used, $members, $blocked, $steps, $start)) {
+            return self::pairs($path);
+        }
+        $this->exhausted = $steps > $this->steps;
+
+        return null;
     }
 
     /**
@@ -68,7 +105,7 @@ final class Matcher
      */
     private function extend(array &$path, array &$used, array $members, array $blocked, int &$steps, int $start): bool
     {
-        if (++$steps > self::STEPS) {
+        if (++$steps > $this->steps) {
             return false;
         }
         $last = $path[count($path) - 1];

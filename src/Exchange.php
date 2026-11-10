@@ -25,6 +25,7 @@ use Flarum\User\User;
  * @property int $received_count
  * @property Carbon|null $drawn_at
  * @property Carbon|null $revealed_at
+ * @property Carbon|null $sent_visible_at
  * @property Carbon|null $completed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -58,6 +59,7 @@ class Exchange extends AbstractModel
         'received_count' => 'integer',
         'drawn_at' => 'datetime',
         'revealed_at' => 'datetime',
+        'sent_visible_at' => 'datetime',
         'completed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -73,6 +75,32 @@ class Exchange extends AbstractModel
     public function isOrganizer(User $actor): bool
     {
         return ! $actor->isGuest() && ($this->user_id === $actor->id || $actor->can(Settings::MODERATE));
+    }
+
+    /**
+     * Run $work with this exchange's row locked and read afresh, inside a
+     * transaction: anything that deletes or rewires assignments re-checks the
+     * status here, so it can't race the draw (a stale "open" would otherwise
+     * wipe a live exchange's matches).
+     *
+     * @template T
+     * @param callable(Exchange): T $work
+     * @return T|null null when the exchange is gone
+     */
+    public static function locked(int $id, callable $work): mixed
+    {
+        return static::query()->getConnection()->transaction(function () use ($id, $work) {
+            /** @var Exchange|null $fresh */
+            $fresh = static::query()->lockForUpdate()->find($id);
+
+            return $fresh ? $work($fresh) : null;
+        });
+    }
+
+    /** Organizers see who has sent their gift only from this moment (Draw::sentVisibleAt), whoever they are. */
+    public function sentFlagsHidden(): bool
+    {
+        return $this->status === self::ACTIVE && (! $this->sent_visible_at || $this->sent_visible_at->isFuture());
     }
 
     public function signupsOpen(): bool

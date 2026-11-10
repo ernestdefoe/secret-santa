@@ -21,6 +21,8 @@ use Illuminate\Support\Collection;
  *   their Santa was only when the exchange is complete and unmasks Santas.
  * - Organizers: counts and per-member shipped/received flags, exclusions, the
  *   reveal log. Never a pair, except through the logged organizer reveal.
+ * - 🚨 Never a row id (assignments, messages): ids follow insertion order, and
+ *   members comparing them could place someone else's pair.
  */
 class Presenter
 {
@@ -124,7 +126,7 @@ class Presenter
         }
 
         if ($organizer) {
-            $data['organizing'] = $this->organizing($exchange, $participants, (bool) $mine);
+            $data['organizing'] = $this->organizing($exchange, $participants);
         }
 
         return $data;
@@ -156,7 +158,6 @@ class Presenter
             /** @var Participant|null $entry */
             $entry = $giftees->get($row->receiver_id);
             $data['giving'][] = [
-                'id' => $row->id,
                 'user' => $this->user($people->get($row->receiver_id)),
                 'wishlist' => $entry?->wishlist,
                 'shippingNote' => $entry?->shipping_note,
@@ -170,7 +171,6 @@ class Presenter
 
         if ($receiving) {
             $data['receiving'] = [
-                'id' => $receiving->id,
                 'shippedAt' => $receiving->shipped_at?->toIso8601String(),
                 'giftNote' => $receiving->shipped_at ? $receiving->gift_note : null,
                 'receivedAt' => $receiving->received_at?->toIso8601String(),
@@ -191,7 +191,6 @@ class Presenter
     private function messages(?Collection $messages, bool $viewerIsGiver): array
     {
         return ($messages ?? collect())->map(fn (Message $m) => [
-            'id' => $m->id,
             'mine' => $m->from_giver === $viewerIsGiver,
             'body' => $m->body,
             'at' => $m->created_at?->toIso8601String(),
@@ -203,21 +202,19 @@ class Presenter
      * received theirs (as separate flags, never as a pair), exclusions, giftees
      * waiting on a rescue Santa, and the reveal log.
      *
-     * 🚨 An organizer who is also in the exchange would see their own gift
-     * ship at the same moment one member's "sent" flips to yes: that names
-     * their Santa. So for them the per-member sent flags stay hidden until the
-     * send-by date (or three weeks after the reveal), when chasing late
-     * Santas is what they're for.
+     * 🚨 Who has sent stays hidden from every organizer until the moment fixed
+     * at the reveal (Exchange::sentFlagsHidden): an organizer in the exchange
+     * would see their own gift ship as one flag flips, and any organizer could
+     * line flags up with what members say in public.
      *
      * @param Collection<int, Participant> $participants
      * @return array<string, mixed>
      */
-    private function organizing(Exchange $exchange, Collection $participants, bool $inIt): array
+    private function organizing(Exchange $exchange, Collection $participants): array
     {
         $assignments = Assignment::query()->where('exchange_id', $exchange->id)->get(['giver_id', 'receiver_id', 'shipped_at', 'received_at']);
         $revealed = in_array($exchange->status, [Exchange::ACTIVE, Exchange::COMPLETE], true);
-        $sentFrom = $exchange->ship_by?->copy()->endOfDay() ?? $exchange->revealed_at?->copy()->addWeeks(3);
-        $sentHidden = $inIt && $exchange->status === Exchange::ACTIVE && $sentFrom && $sentFrom->isFuture();
+        $sentHidden = $exchange->sentFlagsHidden();
 
         $owing = $assignments->groupBy('giver_id');
         $incoming = $assignments->keyBy('receiver_id');
@@ -228,7 +225,7 @@ class Presenter
             'holdReveal' => $exchange->hold_reveal,
             'drawError' => $exchange->draw_error,
             'matchCount' => $assignments->count(),
-            'sentHiddenUntil' => $sentHidden ? $sentFrom->toIso8601String() : null,
+            'sentHiddenUntil' => $sentHidden ? $exchange->sent_visible_at?->toIso8601String() : null,
             'members' => $participants->map(fn (Participant $p) => [
                 'user' => $this->user($p->user),
                 'joinedAt' => $p->joined_at?->toIso8601String(),

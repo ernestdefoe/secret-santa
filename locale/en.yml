@@ -96,7 +96,7 @@ ernestdefoe-secret-santa:
       note_placeholder_digital: Your Steam friend code, gift email, or where to send art.
       note_help: Visible only to the member who draws you, and only after matching. Not even organizers can read it.
       exclusions: Don't match me with
-      exclusions_help: "A partner or roommate, for example (up to {count}). Neither of you will draw the other."
+      exclusions_help: "A partner or roommate, for example (up to {count}). Neither of you will draw the other. Everyone must keep at least 3 people they could be matched with, so in a small exchange this may have to wait until more have joined."
       join: Join the exchange
       save: Save
       joined: You're in! We'll tell you who you're buying for when sign-ups close.
@@ -118,7 +118,7 @@ ernestdefoe-secret-santa:
       hold_reveal: Let me look over the draw before matches are sent
       hold_reveal_help: Otherwise everyone is told who they're buying for as soon as sign-ups close. You never see the pairs either way.
       unmask: Show everyone who their Santa was when the exchange ends
-      unmask_help: Each member then sees who sent their gift, and nobody else's.
+      unmask_help: Each member then sees who sent their gift, and nobody else's. This can't be changed after sign-ups close.
       create: Start the exchange
       save: Save
 
@@ -180,7 +180,8 @@ ernestdefoe-secret-santa:
       delete: Delete
       delete_confirm: Delete this exchange? Every entry, match and note in it is deleted too.
       state_open: Sign-ups close {time}. Matches are drawn automatically then.
-      draw_error_too_few: "Sign-ups closed with fewer than 3 members, so there was no draw. Move the deadline to let more people join."
+      draw_error_too_few: "Sign-ups closed with fewer than 4 members, so there was no draw. Move the deadline to let more people join."
+      draw_error_busy: Matches couldn't be found this time, though they may exist. Try drawing again.
       draw_error_exclusions: There's no way to match everyone with these exclusions. Remove a pair, then draw again.
       state_drawn: "{count, plural, one {# match is} other {# matches are}} ready. Nobody can see them, you included. Send them out, or draw again."
       state_active: "{shipped} of {count} gifts sent, {received} received."
@@ -199,7 +200,7 @@ ernestdefoe-secret-santa:
       note_digital: Delivery note
       missing: Missing
       sent: Sent theirs
-      sent_hidden: "Who has sent their gift shows from {date}. You're in this exchange too, and seeing it sooner could tell you who your Santa is."
+      sent_hidden: "Who has sent their gift shows from {date}. Any sooner, and it could be lined up with who drew whom."
       got: Got theirs
       yes: "Yes"
       not_yet: Not yet
@@ -208,7 +209,7 @@ ernestdefoe-secret-santa:
       dropout: Remove {name} (dropout)
       dropout_confirm_open: Remove {name} from the exchange?
       dropout_confirm_drawn: Remove {name}? Matches will be drawn again.
-      dropout_confirm_active: Remove {name}? Their Santa will buy for their giftee instead, and nobody learns who was matched.
+      dropout_confirm_active: Remove {name}? Their giftee gets a new Santa picked at random, their own Santa is let off, and nobody learns who was matched.
       rescue_pick: Rescue Santa…
       rescue: Assign
       rescue_confirm: This member will buy an extra gift. You'll know this one pair. Continue?
@@ -230,7 +231,6 @@ ernestdefoe-secret-santa:
 
     notification:
       matched_draw: "You're Secret Santa for {username}!"
-      matched_swap: "Your match changed: you're now Secret Santa for {username}"
       matched_rescue: "You're a rescue Santa for {username}"
       shipped: Your Secret Santa sent your gift!
       received: "{username} received your gift"
@@ -258,7 +258,11 @@ ernestdefoe-secret-santa:
       secret_santa_closed: Sign-ups for this exchange are closed.
       secret_santa_too_late: That can't be changed anymore.
       secret_santa_wrong_state: That can't be done at this stage of the exchange.
-      secret_santa_draw_too_few: At least 3 members are needed to draw.
+      secret_santa_draw_too_few: At least 4 members are needed to draw.
+      secret_santa_draw_busy: Matches couldn't be found this time, though they may exist. Try drawing again.
+      secret_santa_too_few_left: That would leave fewer than 4 members, and then people could work out their Santa. End the exchange instead.
+      secret_santa_exclusions_tight: That would leave someone with fewer than 3 people they could be matched with, which could give their Santa away. Remove another pair first, or wait until more people have joined.
+      secret_santa_ship_by_later: Once sign-ups have closed, the send-by date can only move later.
       secret_santa_draw_exclusions: There's no way to match everyone with these exclusions. Remove a pair and try again.
       secret_santa_bad_pair: Choose two different members of this exchange.
       secret_santa_bad_member: That member can't be chosen for this.

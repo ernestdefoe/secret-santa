@@ -76,9 +76,9 @@ abstract class SantaTestCase extends TestCase
         return (int) $this->database()->table('secret_santa_assignments')->where('exchange_id', $exchange)->where('receiver_id', $receiver)->value('giver_id');
     }
 
-    protected function assignmentOf(int $giver, int $exchange = 1): int
+    protected function gifteeOf(int $giver, int $exchange = 1): int
     {
-        return (int) $this->database()->table('secret_santa_assignments')->where('exchange_id', $exchange)->where('giver_id', $giver)->value('id');
+        return (int) $this->database()->table('secret_santa_assignments')->where('exchange_id', $exchange)->where('giver_id', $giver)->value('receiver_id');
     }
 
     /** Markers that may appear in a body: everything else must not. */

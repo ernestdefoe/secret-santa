@@ -206,7 +206,7 @@ export class ExchangePage extends Page {
   exchange: Exchange | null = null;
   missing = false;
   busy = '';
-  drafts: Record<number, Stream<string>> = {};
+  drafts: Record<string, Stream<string>> = {};
   rescueFor: Record<number, Stream<string>> = {};
   pairA = Stream('');
   pairB = Stream('');
@@ -428,7 +428,7 @@ export class ExchangePage extends Page {
         label: t(`giving.gift_note_${e.kind}`),
         placeholder: tx(`giving.gift_note_placeholder_${e.kind}`),
         submit: t(`giving.ship_${e.kind}`),
-        onsubmit: (note: string) => this.act('shipped', { assignment: g.id, note }),
+        onsubmit: (note: string) => this.act('shipped', { giftee: g.user?.id, note }),
       });
 
     return (
@@ -485,7 +485,7 @@ export class ExchangePage extends Page {
               </Button>
             ) : (
               !g.receivedAt && (
-                <Button className="Button Button--link" onclick={() => this.act('shipped', { assignment: g.id, undo: true }).catch(() => {})}>
+                <Button className="Button Button--link" onclick={() => this.act('shipped', { giftee: g.user?.id, undo: true }).catch(() => {})}>
                   {t('giving.undo_ship')}
                 </Button>
               )
@@ -493,7 +493,7 @@ export class ExchangePage extends Page {
           </div>
         </div>
 
-        {this.notes(g.id, g.messages, 'giving')}
+        {this.notes({ giftee: g.user?.id }, g.messages, 'giving')}
       </section>
     );
   }
@@ -517,7 +517,7 @@ export class ExchangePage extends Page {
         label: t('receiving.thanks'),
         placeholder: tx('receiving.thanks_placeholder'),
         submit: t('receiving.mark_received'),
-        onsubmit: (thanks: string) => this.act('received', { assignment: r.id, thanks }),
+        onsubmit: (thanks: string) => this.act('received', { thanks }),
       });
 
     const stage = r.receivedAt ? 2 : r.shippedAt ? 1 : 0;
@@ -559,23 +559,24 @@ export class ExchangePage extends Page {
               {t('receiving.mark_received')}
             </Button>
           ) : (
-            <Button className="Button Button--link" onclick={() => this.act('received', { assignment: r.id, undo: true }).catch(() => {})}>
+            <Button className="Button Button--link" onclick={() => this.act('received', { undo: true }).catch(() => {})}>
               {t('receiving.undo')}
             </Button>
           )}
         </div>
-        {this.notes(r.id!, r.messages || [], 'receiving')}
+        {this.notes({ to: 'santa' }, r.messages || [], 'receiving')}
       </section>
     );
   }
 
   /** The anonymous notes between a Santa and their giftee. */
-  notes(assignment: number, messages: Note[], side: 'giving' | 'receiving') {
-    const draft = (this.drafts[assignment] ??= Stream(''));
+  /** `to` names the other end: { giftee: userId } for a Santa, { to: 'santa' } for a giftee. Never a row id. */
+  notes(to: Record<string, any>, messages: Note[], side: 'giving' | 'receiving') {
+    const draft = (this.drafts[JSON.stringify(to)] ??= Stream(''));
     const send = (ev: SubmitEvent) => {
       ev.preventDefault();
       if (!draft().trim()) return;
-      this.act('message', { assignment, body: draft() })
+      this.act('message', { ...to, body: draft() })
         .then(() => draft(''))
         .catch(() => {});
     };
@@ -587,7 +588,7 @@ export class ExchangePage extends Page {
         {messages.length ? (
           <ul className="SecretSanta-noteList">
             {messages.map((msg) => (
-              <li className={'SecretSanta-note' + (msg.mine ? ' is-mine' : '')} key={msg.id}>
+              <li className={'SecretSanta-note' + (msg.mine ? ' is-mine' : '')}>
                 <span className="SecretSanta-noteWho">
                   {msg.mine ? t('notes.you') : t(side === 'giving' ? 'notes.giftee' : 'notes.santa')} · {when(msg.at)}
                 </span>

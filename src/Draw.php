@@ -3,10 +3,10 @@
 namespace ErnestDefoe\SecretSanta;
 
 use Carbon\Carbon;
-use ErnestDefoe\SecretSanta\Notification\MatchedBlueprint;
 use ErnestDefoe\SecretSanta\Notification\NewsBlueprint;
+use ErnestDefoe\SecretSanta\Job\SendNews;
 use Flarum\Notification\NotificationSyncer;
-use Flarum\User\User;
+use Illuminate\Contracts\Queue\Queue;
 use Illuminate\Database\ConnectionInterface;
 
 /**
@@ -17,7 +17,7 @@ use Illuminate\Database\ConnectionInterface;
  * lists or opens an exchange (due()). Drawn matches are secret from
  * everyone; revealing them tells each Santa, and only them, who they buy for.
  * With hold_reveal the organizer looks the draw over first (counts, never
- * pairs) and may re-draw.
+ * pairs) and may re-draw. The alerts themselves go out on the queue (SendNews).
  */
 class Draw
 {
@@ -25,7 +25,21 @@ class Draw
         private readonly Matcher $matcher,
         private readonly NotificationSyncer $notifications,
         private readonly ConnectionInterface $db,
+        private readonly Queue $queue,
     ) {
+    }
+
+    /**
+     * When organizers may see who has sent: the send-by date, but never less
+     * than two weeks after matches go out, and three weeks with no date.
+     * Fixed at the reveal (see sent_visible_at).
+     */
+    public static function sentVisibleAt(?Carbon $shipBy, Carbon $revealedAt): Carbon
+    {
+        $floor = $revealedAt->copy()->addWeeks(2);
+        $at = $shipBy ? $shipBy->copy()->endOfDay() : $revealedAt->copy()->addWeeks(3);
+
+        return $at->max($floor);
     }
 
     /** Exchanges past their deadline that haven't been drawn (or failed to be): draw them now. One indexed query when there are none. */
@@ -45,7 +59,9 @@ class Draw
 
     /**
      * Draw (or re-draw, before the reveal). Returns null, or why it couldn't:
-     * too_few (under 3 members) or exclusions (no cycle avoids them).
+     * too_few (under 4 members), exclusions (someone has under 3 people they may
+     * be matched with, or no cycle avoids them) or busy (no cycle found within
+     * the search budget: drawing again may work).
      */
     public function run(Exchange $exchange, bool $automatic = false): ?string
     {
@@ -63,14 +79,13 @@ class Draw
             }
 
             $members = Participant::query()->where('exchange_id', $fresh->id)->pluck('user_id')->map(fn ($id) => (int) $id)->all();
-            $exclusions = Exclusion::query()->where('exchange_id', $fresh->id)->get(['user_id', 'other_id'])
-                ->map(fn (Exclusion $e) => [$e->user_id, $e->other_id])->all();
+            $exclusions = Exclusions::pairs($fresh->id);
 
             Assignment::query()->where('exchange_id', $fresh->id)->delete();
 
-            $pairs = count($members) < 3 ? null : $this->matcher->cycle($members, $exclusions);
+            $pairs = $this->matcher->cycle($members, $exclusions);
             if ($pairs === null) {
-                $error = count($members) < 3 ? 'too_few' : 'exclusions';
+                $error = count($members) < Matcher::MIN_MEMBERS ? 'too_few' : ($this->matcher->exhausted ? 'busy' : 'exclusions');
                 $fresh->status = Exchange::OPEN;
                 $fresh->draw_error = $error;
                 $fresh->drawn_at = null;
@@ -79,12 +94,15 @@ class Draw
                 return;
             }
 
+            // 🚨 Rows go in in a shuffled order of their own: inserted round the cycle, ids
+            // would follow it, and two members comparing theirs could place a third pair.
             $now = Carbon::now();
-            Assignment::query()->insert(array_map(
+            $rows = array_map(
                 fn (int $giver, int $receiver) => ['exchange_id' => $fresh->id, 'giver_id' => $giver, 'receiver_id' => $receiver, 'created_at' => $now],
                 array_keys($pairs),
                 $pairs
-            ));
+            );
+            Assignment::query()->insert((new \Random\Randomizer())->shuffleArray($rows));
 
             $fresh->status = Exchange::DRAWN;
             $fresh->draw_error = null;
@@ -105,26 +123,20 @@ class Draw
         return $error === 'state' ? null : $error;
     }
 
-    /** Tell every Santa who they buy for. Only from DRAWN, once. */
+    /** Tell every Santa who they buy for (on the queue). Only from DRAWN, once. */
     public function reveal(Exchange $exchange): bool
     {
-        $moved = Exchange::query()->whereKey($exchange->id)->where('status', Exchange::DRAWN)
-            ->update(['status' => Exchange::ACTIVE, 'revealed_at' => Carbon::now()]);
+        $now = Carbon::now();
+        $moved = Exchange::query()->whereKey($exchange->id)->where('status', Exchange::DRAWN)->update([
+            'status' => Exchange::ACTIVE,
+            'revealed_at' => $now,
+            'sent_visible_at' => self::sentVisibleAt($exchange->ship_by, $now),
+        ]);
         if (! $moved) {
             return false;
         }
         $exchange->refresh();
-
-        $assignments = Assignment::query()->where('exchange_id', $exchange->id)->get();
-        $users = User::query()->whereIn('id', $assignments->pluck('giver_id')->merge($assignments->pluck('receiver_id'))->unique())->get()->keyBy('id');
-
-        foreach ($assignments as $assignment) {
-            $giver = $users->get($assignment->giver_id);
-            $receiver = $users->get($assignment->receiver_id);
-            if ($giver && $receiver) {
-                $this->notifications->sync(new MatchedBlueprint($exchange, $receiver), [$giver]);
-            }
-        }
+        $this->queue->push(new SendNews($exchange->id, 'matched'));
 
         return true;
     }
