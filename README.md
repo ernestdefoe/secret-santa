@@ -13,17 +13,24 @@ Gift exchanges for your Flarum 2 community: sign-ups, a fair secret draw, and gi
 - **Anonymous notes** between each Santa and their giftee: "What size socks?" without giving the game away.
 - **Shipped and received.** Santas mark their gift shipped, with an optional note (a tracking number, or the Steam key itself for digital gifts). Giftees mark it received and can leave a thank-you. Progress bars show how the whole exchange is going.
 - **Notifications** (alerts and email): you're Secret Santa for X, your gift is on its way, a new note, your gift arrived, someone joined your exchange.
+![The list of exchanges](screenshots/list.png)
+
 - **The fun ending.** A "show what you got" discussion in the tag you choose, and, if the organizer turns it on, everyone learns who their Santa was when the exchange ends.
 - **A home for it all:** /secret-santa lists the exchanges open for sign-ups, under way and finished, each with a clear status.
+
+![Joining an exchange](screenshots/join.png)
 
 ## Privacy
 
 Who drew whom is the whole point, so it is enforced on the server:
 
 - Each member sees only their own match. Wishlists and shipping notes reach only their owner and their Santa.
+- The draw needs at least 4 members and leaves everyone at least 3 people they could be matched with, so nobody can work out their Santa by elimination. Dropouts are repaired the same way: nobody, organizers included, learns a pair from it.
 - Nobody else sees a pair: not other members, not organizers, not admins. There is no API resource for any of it, so no include or relationship path can reach it, and a giftee's notifications never carry their Santa.
-- Organizers see who has sent and who has received as separate flags, never as pairs. When something genuinely goes wrong, an organizer can **reveal one member's match**, with a reason, and every reveal is logged where all organizers can see it.
+- Organizers see who has sent and who has received as separate flags, never as pairs, and who has sent only from the send-by date. When something genuinely goes wrong, an organizer can **reveal one member's match**, with a reason, and every reveal is logged where all organizers can see it.
 - With Flarum's GDPR extension, a member's entries are in their data export (without their Santa, unless the exchange unmasked it) and are removed on erasure.
+
+![Organizer tools: flags, never pairs](screenshots/organizer.png)
 
 The test suite checks every one of these against the API, core's own endpoints and notifications included.
 
