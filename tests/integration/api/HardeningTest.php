@@ -155,11 +155,12 @@ class HardeningTest extends SantaTestCase
         $prefix = $db->getTablePrefix();
         $names = match ($db->getDriverName()) {
             'sqlite' => array_column($db->select("select name from sqlite_master where type = 'index' and tbl_name like ?", [$prefix.'secret_santa%']), 'name'),
+            'pgsql' => array_column($db->select('select indexname as name from pg_indexes where tablename like ? union select constraint_name from information_schema.table_constraints where table_name like ?', [$prefix.'secret_santa%', $prefix.'secret_santa%']), 'name'),
             default => array_column($db->select('select constraint_name as name from information_schema.table_constraints where table_schema = database() and table_name like ? union select index_name from information_schema.statistics where table_schema = database() and table_name like ?', [$prefix.'secret_santa%', $prefix.'secret_santa%']), 'name'),
         };
         $this->assertNotEmpty($names);
         foreach ($names as $name) {
-            if (str_starts_with($name, 'sqlite_autoindex') || $name === 'PRIMARY') {
+            if (str_starts_with($name, 'sqlite_autoindex') || $name === 'PRIMARY' || str_ends_with($name, '_pkey') || str_ends_with($name, '_not_null')) {
                 continue;
             }
             $bare = str_starts_with($name, $prefix) ? substr($name, strlen($prefix)) : $name;
