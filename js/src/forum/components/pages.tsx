@@ -270,19 +270,25 @@ export class ExchangePage extends Page {
         {this.timeline(e)}
       </header>,
       this.facts(e),
+      // Once matches are out, who you buy for and your own gift come first.
+      ...e.giving.map((g) => this.giving(e, g)),
+      e.receiving && this.receiving(e, e.receiving),
+      e.giving.length || e.receiving ? [this.mine(e), this.rules(e)] : [this.rules(e), this.mine(e)],
+      this.thread(e),
+      this.people(e),
+      e.organizing && this.organizer(e),
+    ];
+  }
+
+  rules(e: Exchange) {
+    return (
       e.description && (
         <section className="SecretSanta-panel">
           <h3 className="SecretSanta-panelTitle">{t('exchange.rules')}</h3>
           <Text text={e.description} />
         </section>
-      ),
-      this.mine(e),
-      ...e.giving.map((g) => this.giving(e, g)),
-      e.receiving && this.receiving(e, e.receiving),
-      this.thread(e),
-      this.people(e),
-      e.organizing && this.organizer(e),
-    ];
+      )
+    );
   }
 
   timeline(e: Exchange) {
@@ -426,7 +432,7 @@ export class ExchangePage extends Page {
       });
 
     return (
-      <section className="SecretSanta-panel SecretSanta-giving" key={'g' + g.id}>
+      <section className="SecretSanta-panel SecretSanta-giving">
         <div className="SecretSanta-match">
           {g.user && <Face person={g.user} size="large" />}
           <div>

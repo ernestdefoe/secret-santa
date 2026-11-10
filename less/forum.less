@@ -943,8 +943,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 10px;
-  border: 2px solid var(--control-bg);
+  border: 2px solid transparent;
   border-radius: var(--border-radius);
+  // The same face as the text fields beside it, on the modal's tinted body.
+  background: var(--body-bg);
   color: var(--control-color);
   font-weight: 600;
   cursor: pointer;
