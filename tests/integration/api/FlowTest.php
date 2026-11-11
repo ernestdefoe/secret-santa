@@ -84,6 +84,25 @@ class FlowTest extends SantaTestCase
     }
 
     #[Test]
+    public function a_member_who_has_not_confirmed_their_email_cannot_join_and_the_page_says_why()
+    {
+        $this->database()->table('users')->insert(['id' => 8, 'username' => 'unconfirmed', 'email' => 'unconfirmed@machine.local', 'is_email_confirmed' => 0, 'password' => '', 'joined_at' => Carbon::now()]);
+        $this->database()->table('secret_santa_exchanges')->insert(['id' => 2, 'user_id' => 2, 'title' => 'Still open', 'kind' => 'digital', 'status' => 'open', 'signup_ends_at' => Carbon::now()->addDay(), 'hold_reveal' => 0, 'unmask' => 1, 'participants_count' => 0, 'created_at' => Carbon::now()]);
+
+        // Flarum treats them as a guest for permissions: no Join button (the page shows "confirm your email" instead)...
+        [$status, $json] = $this->call('GET', '/api/secret-santa/2', 8);
+        $this->assertSame(200, $status);
+        $this->assertFalse($json['data']['can']['join']);
+        [, $json] = $this->call('GET', '/api/secret-santa/2', 7);
+        $this->assertTrue($json['data']['can']['join'], 'a confirmed member may join');
+
+        // ...and the endpoint refuses them too.
+        [$status] = $this->call('POST', '/api/secret-santa/2/entry', 8, ['wishlist' => 'Socks', 'shippingNote' => 'Somewhere 1']);
+        $this->assertSame(403, $status);
+        $this->assertSame(0, $this->database()->table('secret_santa_participants')->where('exchange_id', 2)->count());
+    }
+
+    #[Test]
     public function no_joining_after_the_deadline()
     {
         [$status, $json] = $this->call('POST', '/api/secret-santa/1/entry', 7, ['wishlist' => 'Socks', 'shippingNote' => 'Somewhere 1']);

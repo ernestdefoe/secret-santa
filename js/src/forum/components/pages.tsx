@@ -293,8 +293,9 @@ export class ExchangePage extends Page {
 
   timeline(e: Exchange) {
     const at = STEPS.indexOf(e.status);
-    const dates: Record<string, string | null> = {
-      open: day(e.signupEndsAt),
+    const dates: Record<string, Mithril.Children> = {
+      // The dates live here only: sign-ups close at a time of day, the send-by date is a day.
+      open: <time datetime={e.signupEndsAt}>{moment(e.signupEndsAt)}</time>,
       drawn: e.drawnAt ? day(e.drawnAt) : null,
       active: e.shipBy ? tx('exchange.ship_by_short', { date: day(e.shipBy) }) : null,
       complete: e.completedAt ? day(e.completedAt) : null,
@@ -316,8 +317,6 @@ export class ExchangePage extends Page {
     const facts: [string, Mithril.Children, Mithril.Children][] = [
       ['fas fa-tag', t('exchange.budget'), e.budget || t('exchange.no_budget')],
       [kindIcon(e.kind), t('exchange.kind'), t(`kind.${e.kind}`)],
-      ['far fa-clock', t('exchange.signups_close'), <time datetime={e.signupEndsAt}>{moment(e.signupEndsAt)}</time>],
-      ['fas fa-truck-fast', t('exchange.ship_by'), e.shipBy ? day(e.shipBy) : t('exchange.no_ship_by')],
       ['fas fa-users', t('exchange.members'), String(e.participantsCount)],
     ];
     return (
@@ -352,10 +351,12 @@ export class ExchangePage extends Page {
           </section>
         );
       }
-      if (e.status === 'open' && app.session.user === null) {
+      // Unconfirmed members are guests to Flarum's permissions, so say why there's no Join button.
+      const user = app.session.user;
+      if (e.status === 'open' && (!user || !user.isEmailConfirmed())) {
         return (
           <section className="SecretSanta-panel SecretSanta-join">
-            <p>{t('exchange.log_in_to_join')}</p>
+            <p>{t(user ? 'exchange.confirm_email_to_join' : 'exchange.log_in_to_join')}</p>
           </section>
         );
       }

@@ -8,9 +8,9 @@ import { t, tx, type Kind, type Person, type Status } from '../api';
 
 /** Small pieces both pages use. People are plain objects from our endpoints, not store models. */
 
-export function Face({ attrs }: { attrs: { person: Person; size?: 'small' | 'large'; title?: boolean } }) {
+export function Face(_: { attrs: { person: Person; size?: 'small' | 'large'; title?: boolean } }) {
   return {
-    view: () => {
+    view: ({ attrs }: { attrs: { person: Person; size?: 'small' | 'large'; title?: boolean } }) => {
       const { person } = attrs;
       const className = 'Avatar SecretSanta-face' + (attrs.size ? ' SecretSanta-face--' + attrs.size : '');
       return person.avatar ? (
@@ -30,9 +30,9 @@ export function Face({ attrs }: { attrs: { person: Person; size?: 'small' | 'lar
   };
 }
 
-export function PersonLink({ attrs }: { attrs: { person: Person | null } }) {
+export function PersonLink(_: { attrs: { person: Person | null } }) {
   return {
-    view: () =>
+    view: ({ attrs }: { attrs: { person: Person | null } }) =>
       attrs.person ? (
         <Link className="SecretSanta-person" href={app.route('user', { username: attrs.person.slug })}>
           <Face person={attrs.person} />
@@ -44,9 +44,9 @@ export function PersonLink({ attrs }: { attrs: { person: Person | null } }) {
   };
 }
 
-export function Faces({ attrs }: { attrs: { people: Person[]; total: number } }) {
+export function Faces(_: { attrs: { people: Person[]; total: number } }) {
   return {
-    view: () => {
+    view: ({ attrs }: { attrs: { people: Person[]; total: number } }) => {
       const more = attrs.total - attrs.people.length;
       return (
         <span className="SecretSanta-faces" aria-label={tx('card.members', { count: attrs.total })}>
@@ -67,9 +67,9 @@ const STATUS_ICONS: Record<Status, string> = {
   complete: 'fas fa-circle-check',
 };
 
-export function StatusPill({ attrs }: { attrs: { status: Status } }) {
+export function StatusPill(_: { attrs: { status: Status } }) {
   return {
-    view: () => (
+    view: ({ attrs }: { attrs: { status: Status } }) => (
       <span className={'SecretSanta-status SecretSanta-status--' + attrs.status}>
         <Icon name={STATUS_ICONS[attrs.status]} /> {t(`status.${attrs.status}`)}
       </span>
@@ -94,9 +94,14 @@ export function moment(iso: string): string {
   return dayjs(iso).format('lll');
 }
 
+type TextAttrs = { text: string | null | undefined; className?: string };
+
 /** Plain text with line breaks kept; never HTML. */
-export function Text({ attrs }: { attrs: { text: string | null | undefined; className?: string } }) {
-  return { view: () => (attrs.text ? <div className={'SecretSanta-text ' + (attrs.className || '')}>{attrs.text}</div> : null) };
+export function Text(_: { attrs: TextAttrs }) {
+  return {
+    view: ({ attrs }: { attrs: TextAttrs }) =>
+      attrs.text ? <div className={'SecretSanta-text ' + (attrs.className || '')}>{attrs.text}</div> : null,
+  };
 }
 
 declare const dayjs: any;
